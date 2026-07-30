@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mondelez VN — DC Footprint (Control Tower)</title>
+
+<!--
+  ============================================================================
+  MONDELEZ VIETNAM — VN DC FOOTPRINT / LOGISTICS CONTROL TOWER (cover page)
+  ----------------------------------------------------------------------------
+  Standalone static reference for hand-off. Single file, no build step.
+  Rebuild target: any framework (React/Vue/Svelte/plain).
+
+  DEPENDENCIES (CDN, need internet when opening in a browser):
+    - Google Fonts: Plus Jakarta Sans (UI) + JetBrains Mono (data/labels)
+    - lucide icons (UMD)  -> decorative only; page works without them
+  Everything else (layout, map, animations) is inline & self-contained.
+
+  DESIGN TOKENS are declared in :root below — this doubles as the color spec.
+  Structure: [1] status ribbon  [2] 3-col main (plants | VN map | channel+table)
+             [3] tactical grid.  Designed to fit one screen (100vh).
+  ============================================================================
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  /* ── Design tokens ─────────────────────────────────────────────────── */
+  :root {
+    /* surfaces — deep-space indigo base */
+    --surface-950: #060a22;
+    --surface-900: #0a1440;
+    --surface-800: #12266b;                  /* mid blue highlight */
+    --card-bg:     rgba(12, 22, 58, 0.78);   /* glassy indigo */
+    --card-hover:  #13245e;
+    /* brand + accents — electric azure primary, cyan tech-glow */
+    --brand-blue:       #4f8dff;
+    --brand-blue-light: #93b8ff;
+    --cyan:             #22d3ee;
+    --green:  #10b981;
+    --amber:  #f59e0b;
+    --red:    #ef4444;
+    --purple: #8b5cf6;
+    /* lines / glass */
+    --glass-border: rgba(80, 150, 255, 0.14);
+    --hairline:     rgba(255, 255, 255, 0.06);
+    --cell-bg:      rgba(255, 255, 255, 0.03);
+    --cell-border:  rgba(255, 255, 255, 0.05);
+    /* text */
+    --txt:      rgba(255, 255, 255, 0.90);
+    --txt-dim:  rgba(255, 255, 255, 0.45);
+    --txt-mute: rgba(255, 255, 255, 0.30);
+    --radius: 16px;
+    --font-ui:   'Plus Jakarta Sans', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: var(--font-ui);
+    color: var(--txt);
+    background-color: var(--surface-950);
+    background-image:
+      linear-gradient(rgba(80,150,255,0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(80,150,255,0.045) 1px, transparent 1px),
+      radial-gradient(ellipse 66% 44% at 50% -6%, rgba(34,211,238,0.16) 0%, transparent 52%),
+      radial-gradient(ellipse 94% 64% at 50% -12%, rgba(37,99,235,0.34) 0%, transparent 64%),
+      linear-gradient(180deg, #060a22 0%, #0a1642 100%);
+    background-size: 42px 42px, 42px 42px, 100% 100%, 100% 100%, 100% 100%;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: var(--font-mono); }
+  svg.lucide { width: 1em; height: 1em; stroke: currentColor; stroke-width: 2;
+    fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* ── Page shell ────────────────────────────────────────────────────── */
+  .page {
+    height: 100vh;
+    display: flex; flex-direction: column; gap: 16px;
+    padding: 24px; overflow: hidden;
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(12px);
+    overflow: hidden;
+  }
+
+  /* ── [1] Status ribbon ─────────────────────────────────────────────── */
+  .ribbon { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex-shrink: 0; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px; border-radius: 8px; border: 1px solid;
+    font-family: var(--font-mono); font-size: 13px; font-weight: 500;
+  }
+  .chip .lbl { color: var(--txt-dim); }
+  .chip .val { font-weight: 600; }
+  .chip .lucide { font-size: 14px; }
+  .pulse { animation: pulseDot 1.5s ease-in-out infinite; }
+  @keyframes pulseDot { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* ── [0] Masthead — hero title + ribbon ────────────────────────────── */
+  .masthead { display: flex; flex-direction: column; gap: 12px; flex-shrink: 0; }
+  .hero { display: flex; align-items: center; gap: 16px; }
+  .hero .beacon {
+    width: 46px; height: 46px; border-radius: 13px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: #f59e0b1a; border: 1px solid #f59e0b40; color: var(--amber);
+    font-size: 22px; box-shadow: 0 0 26px #f59e0b33;
+  }
+  .hero .htext { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .hero .eyebrow {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+    letter-spacing: .2em; text-transform: uppercase; color: var(--txt-dim);
+  }
+  .hero h1 {
+    margin: 0; font-family: var(--font-ui); font-weight: 700; line-height: 1.02;
+    font-size: clamp(26px, 3.2vw, 42px); letter-spacing: -0.015em;
+    background: linear-gradient(96deg, #22d3ee 0%, #ffffff 50%, #4f8dff 100%);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent; -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 22px rgba(34,211,238,0.52)) drop-shadow(0 0 46px rgba(79,141,255,0.42));
+  }
+
+  /* ── [2] Main 3-col ────────────────────────────────────────────────── */
+  .main { display: grid; grid-template-columns: 1.15fr 1.9fr 1.35fr; gap: 16px; flex: 1; min-height: 0; }
+  .col { min-height: 0; }
+  .col-right { display: flex; flex-direction: column; gap: 16px; }
+
+  /* Plant cards */
+  .plants { display: flex; flex-direction: column; gap: 16px; height: 100%; }
+  .plant { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .plant-head { display: flex; align-items: flex-start; justify-content: space-between;
+    padding: 10px 14px; border-bottom: 1px solid var(--glass-border); flex-shrink: 0; }
+  .plant-head .id { display: flex; align-items: center; gap: 10px; }
+  .icon-box { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0; font-size: 15px; }
+  .plant-name { font-family: var(--font-mono); font-size: 15px; font-weight: 600; color: var(--txt); line-height: 1.15; }
+  .plant-region { display: flex; align-items: center; gap: 4px; font-family: var(--font-mono);
+    font-size: 11px; color: var(--txt-dim); margin-top: 2px; }
+  .plant-region .lucide { font-size: 10px; }
+  .badge { font-family: var(--font-mono); font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; flex-shrink: 0; }
+  .plant-body { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; flex: 1; min-height: 0; }
+  .headline-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex-shrink: 0; }
+  .hbox { border-radius: 8px; background: var(--cell-bg); border: 1px solid var(--cell-border);
+    padding: 8px 12px; display: flex; flex-direction: column; justify-content: center; }
+  .hbox .lbl { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--txt-dim); }
+  .hbox .num { font-family: var(--font-mono); font-size: 24px; font-weight: 700; line-height: 1.1; margin-top: 4px; }
+  .hbox .sub { font-family: var(--font-mono); font-size: 11px; color: var(--txt-mute); margin-top: 2px; }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 8px; flex: 1; min-height: 0; }
+  .scell { border-radius: 8px; background: var(--cell-bg); border: 1px solid var(--cell-border);
+    padding: 8px 10px; display: flex; flex-direction: column; justify-content: center; min-height: 0; }
+  .scell .lbl { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono);
+    font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--txt-dim); }
+  .scell .lbl .lucide { font-size: 12px; }
+  .scell .val { font-family: var(--font-mono); font-size: 15px; font-weight: 600; color: var(--txt); margin-top: 4px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .scell .sub { font-family: var(--font-mono); font-size: 10px; color: var(--txt-mute); }
+
+  /* Map card */
+  .map-card { height: 100%; display: flex; flex-direction: column; padding: 8px 16px 16px; position: relative; }
+  .map-glow { position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse 65% 70% at 42% 48%, rgba(34,211,238,0.2), transparent 72%); }
+  .map-stage { flex: 1; min-height: 0; position: relative; perspective: 1100px; cursor: crosshair; }
+  .map-tilt { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform .9s ease; }
+  .map-header { position: absolute; top: 8px; left: 12px; right: 12px; z-index: 2;
+    display: flex; align-items: center; justify-content: space-between; }
+  .map-title { font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: .13em;
+    text-transform: uppercase; color: rgba(80,150,255,0.8); }
+  .map-live { display: flex; align-items: center; gap: 5px; }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green);
+    box-shadow: 0 0 6px #10b98180; animation: livePulse 2s cubic-bezier(.4,0,.6,1) infinite; }
+  @keyframes livePulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .map-live span { font-family: var(--font-mono); font-size: 9.5px; color: var(--txt-mute); }
+  .map-svg-wrap { position: absolute; top: 28px; left: 0; right: 0; bottom: 0; }
+  .map-svg-wrap svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .hud { position: absolute; width: 10px; height: 10px; }
+  .map-stats { display: flex; gap: 18px; justify-content: center; border-top: 1px solid var(--hairline); padding-top: 8px; flex-shrink: 0; }
+  .mstat { text-align: center; min-width: 60px; }
+  .mstat .v { font-family: var(--font-mono); font-size: 19px; font-weight: 700; line-height: 1; }
+  .mstat .l { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--txt-mute); margin-top: 3px; }
+
+  /* Channel split */
+  .panel-head { display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--glass-border); }
+  .panel-title { font-family: var(--font-mono); font-size: 14px; font-weight: 600; color: rgba(255,255,255,.8);
+    text-transform: uppercase; letter-spacing: .06em; }
+  .panel-note { font-family: var(--font-mono); font-size: 11px; color: var(--txt-mute); }
+  .channels { padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; }
+  .chan-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; font-family: var(--font-mono); font-size: 13px; }
+  .chan-top .k { font-weight: 600; }
+  .chan-top .n { color: var(--txt-dim); margin-left: 6px; }
+  .chan-top .p { font-weight: 700; font-size: 14px; }
+  .bar { width: 100%; height: 10px; background: rgba(255,255,255,.10); border-radius: 999px; overflow: hidden; }
+  .bar > span { display: block; height: 100%; border-radius: 999px; }
+
+  /* Capacity table */
+  .cap-card { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .cap-scroll { flex: 1; min-height: 0; overflow: auto; }
+  table.cap { width: 100%; border-collapse: collapse; text-align: left; }
+  table.cap th { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--txt-dim); font-weight: 500; padding: 10px; }
+  table.cap td { font-family: var(--font-mono); font-size: 14px; padding: 10px; border-top: 1px solid var(--hairline); }
+  table.cap tbody tr:nth-child(even) { background: rgba(255,255,255,.02); }
+  table.cap th.r, table.cap td.r { text-align: right; }
+  .cap-total { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px;
+    border-top: 1px solid var(--glass-border); background: rgba(80,150,255,.06); flex-shrink: 0; }
+  .cap-total .lbl { font-family: var(--font-mono); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--txt-dim); }
+  .cap-total .val { font-family: var(--font-mono); font-size: 13px; }
+
+  /* ── [3] Tactical grid ─────────────────────────────────────────────── */
+  .tactical { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; height: 96px; flex-shrink: 0; }
+  .tcard { position: relative; display: flex; flex-direction: column; justify-content: space-between;
+    padding: 10px 16px; background: var(--card-bg); border: 1px solid var(--glass-border);
+    border-radius: 12px; overflow: hidden; transition: border-color .2s, background .2s; }
+  .tcard:hover { border-color: #4f8dff80; background: var(--card-hover); }
+  .tcard .thead { display: flex; align-items: center; gap: 8px; }
+  .tcard .thead .lucide { font-size: 15px; }
+  .tcard .thead .name { font-family: var(--font-mono); font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tcard .kpis { display: flex; align-items: flex-end; justify-content: space-between; gap: 4px; }
+  .tcard .kpi { display: flex; flex-direction: column; min-width: 0; }
+  .tcard .kpi .l { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--txt-mute); line-height: 1.1; }
+  .tcard .kpi .v { font-family: var(--font-mono); font-size: 17px; font-weight: 700; line-height: 1; margin-top: 2px; }
+  .tcard .accent { position: absolute; bottom: 0; left: 0; right: 0; height: 2px; opacity: .25; }
+</style>
+</head>
+
+<body>
+<div class="page">
+
+  <!-- ── [0] MASTHEAD — hero title + status ribbon ────────────────────── -->
+  <div class="masthead">
+    <div class="hero">
+      <div class="beacon"><i class="lucide pulse" data-lucide="radio"></i></div>
+      <div class="htext">
+        <span class="eyebrow">Mondelez Vietnam · DC Footprint</span>
+        <h1>Welcome to VN Logistics Control Tower</h1>
+      </div>
+    </div>
+
+    <div class="ribbon">
+      <div class="chip" style="background:#4f8dff1a;border-color:#4f8dff33">
+        <i class="lucide" data-lucide="layers" style="color:var(--brand-blue-light)"></i>
+        <span class="lbl">Internal Pallets</span><span class="val" style="color:var(--brand-blue-light)">16,800</span>
+      </div>
+      <div class="chip" style="background:#10b9811a;border-color:#10b98133">
+        <i class="lucide" data-lucide="boxes" style="color:var(--green)"></i>
+        <span class="lbl">External Pallets</span><span class="val" style="color:var(--green)">13K – 19K</span>
+      </div>
+      <div class="chip" style="background:#f59e0b1a;border-color:#f59e0b33">
+        <i class="lucide" data-lucide="weight" style="color:var(--amber)"></i>
+        <span class="lbl">Tonnage</span><span class="val" style="color:var(--amber)">~100,055 T</span>
+      </div>
+      <div class="chip" style="background:#8b5cf61a;border-color:#8b5cf633">
+        <i class="lucide" data-lucide="package" style="color:var(--purple)"></i>
+        <span class="lbl">SKUs</span><span class="val" style="color:var(--purple)">~779</span>
+      </div>
+      <div class="chip" style="background:#4f8dff1a;border-color:#4f8dff33">
+        <i class="lucide" data-lucide="building-2" style="color:var(--brand-blue-light)"></i>
+        <span class="lbl">Facilities</span><span class="val" style="color:var(--brand-blue-light)">4</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── [2] MAIN 3-COL ─────────────────────────────────────────────── -->
+  <div class="main">
+
+    <!-- LEFT — plant detail cards -->
+    <div class="col">
+      <div class="plants">
+
+        <!-- BKD -->
+        <div class="card plant" style="border-left:3px solid var(--brand-blue)">
+          <div class="plant-head">
+            <div class="id">
+              <div class="icon-box" style="background:#4f8dff1a;border:1px solid #4f8dff44;color:var(--brand-blue)">
+                <i class="lucide" data-lucide="factory"></i>
+              </div>
+              <div>
+                <div class="plant-name">BKD Plant</div>
+                <div class="plant-region"><i class="lucide" data-lucide="map-pin" style="color:var(--brand-blue)"></i>Ho Chi Minh / South Vietnam</div>
+              </div>
+            </div>
+            <span class="badge" style="background:#4f8dff1a;color:var(--brand-blue)">Bình Dương</span>
+          </div>
+          <div class="plant-body">
+            <div class="headline-grid">
+              <div class="hbox">
+                <div class="lbl">Internal DC</div>
+                <div class="num" style="color:var(--brand-blue);text-shadow:0 0 20px #4f8dffaa">12,500</div>
+                <div class="sub">pallets · 14,500 m²</div>
+              </div>
+              <div class="hbox">
+                <div class="lbl">External</div>
+                <div class="num" style="color:var(--txt)">4,000 – 10,000</div>
+                <div class="sub">pallets · 4 km · peak</div>
+              </div>
+            </div>
+            <div class="stat-grid">
+              <div class="scell">
+                <div class="lbl"><i class="lucide" data-lucide="warehouse" style="color:var(--brand-blue)"></i>Copacker</div>
+                <div class="val">500 plt</div><div class="sub">1,500 m²</div>
+              </div>
+              <div class="scell">
+                <div class="lbl"><i class="lucide" data-lucide="weight" style="color:var(--amber)"></i>Tonnage</div>
+                <div class="val">~63,389 T</div>
+              </div>
+              <div class="scell">
+                <div class="lbl"><i class="lucide" data-lucide="package" style="color:var(--purple)"></i>SKUs</div>
+                <div class="val">~503</div>
+              </div>
+              <div class="scell">
+                <div class="lbl"><i class="lucide" data-lucide="clock" style="color:var(--green)"></i>Operations</div>
+                <div class="val">3 shifts · 24/6</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- NKD -->
+        <div class="card plant" style="border-left:3px solid var(--green)">
+          <div class="plant-head">
+            <div class="id">
+              <div class="icon-box" style="background:#10b9811a;border:1px solid #10b98144;color:var(--green)">
+                <i class="lucide" data-lucide="factory"></i>
+              </div>
+              <div>
+                <div class="plant-name">NKD Plant</div>
+                <div class="plant-region"><i class="lucide" data-lucide="map-pin" style="color:var(--green)"></i>Hanoi / North Vietnam</div>
+              </div>
+            </div>
+            <span class="badge" style="background:#10b9811a;color:var(--green)">Hưng Yên</span>
+          </div>
+          <div class="plant-body">
+            <div class="headline-grid">
+              <div class="hbox">
+                <div class="lbl">Internal DC</div>
+                <div class="num" style="color:var(--green);text-shadow:0 0 20px #10b981aa">4,300</div>
+                <div class="sub">pallets · 5,625 m²</div>
+              </div>
+              <div class="hbox">
+                <div class="lbl">External</div>
+                <div class="num" style="color:var(--txt)">9,000</div>
+                <div class="sub">pallets · 6 km</div>
+              </div>
+            </div>
+            <div class="stat-grid">
+              <div class="scell">
+                <div class="lbl"><i class="lucide" data-lucide="warehouse" style="color:var(--green)"></i>Copacker</div>
+                <div class="val">400 plt</div><div class="sub">970 m²</div>
+              </div>
+              <div class="scell">
+                <div class="lbl"><i class="lucide" data-lucide="weight" style="color:var(--amber)"></i>Tonnage</div>
+                <div class="val">~36,666 T</div>
+              </div>
+              <div class="scell">
+                <div class="lbl"><i class="lucide" data-lucide="package" style="color:var(--purple)"></i>SKUs</div>
+                <div class="val">~276</div>
+              </div>
+              <div class="scell">
+                <div class="lbl"><i class="lucide" data-lucide="clock" style="color:var(--green)"></i>Operations</div>
+                <div class="val">3 shifts · 24/6</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- CENTER — Vietnam map -->
+    <div class="col">
+      <div class="card map-card">
+        <div class="map-glow"></div>
+        <div class="map-stage" id="mapStage">
+          <div class="map-tilt" id="mapTilt">
+            <div class="map-header">
+              <span class="map-title">Vietnam DC Footprint</span>
+              <span class="map-live"><span class="live-dot"></span><span>LIVE</span></span>
+            </div>
+            <div class="map-svg-wrap">
+              <svg viewBox="0 0 240 300" preserveAspectRatio="xMidYMid meet">
+                <defs>
+                  <filter id="vn-glow" x="-90%" y="-90%" width="280%" height="280%">
+                    <feGaussianBlur stdDeviation="5.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                  </filter>
+                  <filter id="vn-glow-sm" x="-90%" y="-90%" width="280%" height="280%">
+                    <feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                  </filter>
+                  <linearGradient id="vn-fill" x1="0" y1="0" x2="0.4" y2="1">
+                    <stop offset="0%" stop-color="#93b8ff" stop-opacity="0.16"/>
+                    <stop offset="100%" stop-color="#4f8dff" stop-opacity="0.05"/>
+                  </linearGradient>
+                </defs>
+
+                <!-- latitude grid -->
+                <g stroke="rgba(255,255,255,0.06)" stroke-width="0.4">
+                  <line x1="0" y1="40" x2="240" y2="40"/><line x1="0" y1="90" x2="240" y2="90"/>
+                  <line x1="0" y1="140" x2="240" y2="140"/><line x1="0" y1="190" x2="240" y2="190"/>
+                  <line x1="0" y1="240" x2="240" y2="240"/><line x1="0" y1="290" x2="240" y2="290"/>
+                </g>
+
+                <!-- Vietnam silhouette (real border, simplified) -->
+                <path id="vnPath" fill="url(#vn-fill)" stroke="rgba(80,150,255,0.60)" stroke-width="1" stroke-linejoin="round" filter="url(#vn-glow-sm)"
+                  d="M 67.7 10 L 58.5 15.1 L 59.3 18.2 L 57 20.8 L 50.3 23.3 L 48.6 20.3 L 46 21 L 43 26.7 L 37.2 21.3 L 35.2 25 L 31.3 20.9 L 26.1 27.8 L 16.6 21.6 L 10 28.7 L 18.6 37.8 L 19.7 42.8 L 22.5 39.1 L 25.4 41.6 L 22.2 50.4 L 27.7 57 L 37.9 61.4 L 45.8 55.5 L 55.3 61.4 L 50.5 65.1 L 52 66.9 L 55.7 65 L 55.1 69.6 L 61.6 72.1 L 58.8 77.9 L 53.7 81.3 L 44.9 79.8 L 45.8 83.4 L 41.3 87.1 L 64.2 98.2 L 65.2 105.5 L 70.9 108.1 L 75.5 117.9 L 89.9 130.5 L 92.4 141.1 L 95.7 139.4 L 97.3 143.6 L 106.4 148.1 L 102 154.3 L 105 159 L 109.3 160.4 L 109.3 167.4 L 106.6 168.1 L 108.2 175.4 L 104.2 184.8 L 109.3 196 L 106.9 207 L 108 218.2 L 101 219.6 L 92.7 225.5 L 87.4 225.4 L 88.1 231.1 L 80.6 229.1 L 76.5 232.1 L 77.5 238.3 L 83.4 242.8 L 83.4 247.7 L 77.2 246.3 L 75.9 243.1 L 67.9 246.3 L 63.9 244.5 L 63.6 249 L 59.5 252.7 L 51.6 254.6 L 54.1 258.5 L 52.2 261.4 L 57.5 258.9 L 63.2 263.1 L 58.5 268.1 L 58.1 286.1 L 56.2 287.7 L 58 290 L 64.4 288.2 L 71.2 279.9 L 90.5 270.1 L 94.7 255.8 L 98 254 L 99.7 256.8 L 102.5 256 L 133.7 238.4 L 139.8 227.7 L 138.8 218.4 L 141.5 218.3 L 138.5 213.4 L 140.5 211.4 L 139.4 213.7 L 141.7 214.8 L 143.1 212.4 L 138.7 192.1 L 140.3 188.8 L 133.6 163.5 L 121.7 149.8 L 122.3 146.4 L 118.8 146.9 L 120.2 144.8 L 102.5 132.8 L 92.6 122.7 L 88.2 114.9 L 90 112.8 L 88.5 109.6 L 81.4 106 L 73.2 93.5 L 79.2 75.8 L 90.8 70 L 90.6 63.5 L 94.9 61.5 L 94 59.3 L 105.2 60 L 106.1 57.4 L 106.5 60.5 L 109.4 51 L 116.5 47.5 L 108 51.1 L 106.5 49.5 L 109.4 49.9 L 113.2 45.7 L 118.1 46.2 L 113.8 42.8 L 104.6 43.7 L 98.5 39.6 L 99 37.6 L 92.5 37 L 90 27.5 L 95.1 21 L 82.2 17.4 Z"/>
+                <use href="#vnPath" fill="none" stroke="rgba(147,184,255,0.5)" stroke-width="0.4" stroke-dasharray="1.5 2.5"/>
+
+                <!-- leader lines (plant marker -> legend row) -->
+                <g stroke-dasharray="2 3" stroke-width="0.4" stroke-opacity="0.28">
+                  <line x1="67"   y1="62"  x2="146" y2="64"  stroke="#10b981"/>
+                  <line x1="91.8" y1="244" x2="146" y2="236" stroke="#4f8dff"/>
+                </g>
+
+                <!-- primary NKD <-> BKD corridor — traces the spine of Vietnam -->
+                <path d="M 67 62 C 74 118, 126 168, 122 198 S 110 242, 91.8 244" fill="none" stroke="#22d3ee" stroke-width="5.5" stroke-opacity="0.30" filter="url(#vn-glow-sm)"/>
+                <path d="M 67 62 C 74 118, 126 168, 122 198 S 110 242, 91.8 244" fill="none" stroke="#22d3ee" stroke-width="1.4" stroke-opacity="0.8"/>
+                <circle r="2.4" fill="#22d3ee" opacity="0.9" filter="url(#vn-glow-sm)"><animateMotion dur="4.4s" begin="0s"    repeatCount="indefinite" calcMode="linear" path="M 67 62 C 74 118, 126 168, 122 198 S 110 242, 91.8 244"/></circle>
+                <circle r="2.4" fill="#22d3ee" opacity="0.9" filter="url(#vn-glow-sm)"><animateMotion dur="4.4s" begin="-1.1s" repeatCount="indefinite" calcMode="linear" path="M 67 62 C 74 118, 126 168, 122 198 S 110 242, 91.8 244"/></circle>
+                <circle r="2.4" fill="#22d3ee" opacity="0.9" filter="url(#vn-glow-sm)"><animateMotion dur="4.4s" begin="-2.2s" repeatCount="indefinite" calcMode="linear" path="M 67 62 C 74 118, 126 168, 122 198 S 110 242, 91.8 244"/></circle>
+                <circle r="2.4" fill="#22d3ee" opacity="0.9" filter="url(#vn-glow-sm)"><animateMotion dur="4.4s" begin="-3.3s" repeatCount="indefinite" calcMode="linear" path="M 67 62 C 74 118, 126 168, 122 198 S 110 242, 91.8 244"/></circle>
+
+                <!-- nodes — internal DC plants only -->
+                <!-- NKD (Internal) -->
+                <circle cx="67" cy="62" r="18" fill="none" stroke="#10b981" stroke-width="0.9">
+                  <animate attributeName="r" values="15;27;15" dur="2.6s" repeatCount="indefinite"/>
+                  <animate attributeName="opacity" values="0.5;0;0.5" dur="2.6s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="67" cy="62" r="18" fill="#10b981" opacity="0.24" filter="url(#vn-glow)"/>
+                <circle cx="67" cy="62" r="13" fill="#10b9812b" stroke="#10b981" stroke-width="1.6"/>
+                <text x="67" y="62" fill="#10b981" font-size="10.5" font-family="JetBrains Mono, monospace" font-weight="bold" text-anchor="middle" dominant-baseline="middle">NKD</text>
+                <!-- BKD (Internal) -->
+                <circle cx="91.8" cy="244" r="17" fill="none" stroke="#4f8dff" stroke-width="0.9">
+                  <animate attributeName="r" values="15;26;15" dur="2.6s" repeatCount="indefinite"/>
+                  <animate attributeName="opacity" values="0.5;0;0.5" dur="2.6s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="91.8" cy="244" r="17" fill="#4f8dff" opacity="0.24" filter="url(#vn-glow)"/>
+                <circle cx="91.8" cy="244" r="12.5" fill="#4f8dff2b" stroke="#4f8dff" stroke-width="1.6"/>
+                <text x="91.8" y="244" fill="#4f8dff" font-size="10" font-family="JetBrains Mono, monospace" font-weight="bold" text-anchor="middle" dominant-baseline="middle">BKD</text>
+
+                <!-- legend — internal DC plants only -->
+                <g font-family="JetBrains Mono, monospace">
+                  <text x="148" y="50" fill="rgba(255,255,255,0.30)" font-size="8.5" font-weight="700" letter-spacing="1.4">NORTH</text>
+                  <circle cx="150" cy="64" r="3.4" fill="#10b98133" stroke="#10b981" stroke-width="1.1"/>
+                  <text x="159" y="66" fill="rgba(255,255,255,0.85)" font-size="9.5" font-weight="600">NKD DC (Internal)</text>
+                  <text x="159" y="75" fill="#10b981" font-size="7.5" opacity="0.9">4,300 plt</text>
+
+                  <text x="148" y="222" fill="rgba(255,255,255,0.30)" font-size="8.5" font-weight="700" letter-spacing="1.4">SOUTH</text>
+                  <circle cx="150" cy="236" r="3.4" fill="#4f8dff33" stroke="#4f8dff" stroke-width="1.1"/>
+                  <text x="159" y="238" fill="rgba(255,255,255,0.85)" font-size="9.5" font-weight="600">BKD DC (Internal)</text>
+                  <text x="159" y="247" fill="#4f8dff" font-size="7.5" opacity="0.9">12,500 plt</text>
+                </g>
+              </svg>
+            </div>
+
+            <!-- HUD corner brackets -->
+            <div class="hud" style="top:4px;left:4px;border-top:1px solid rgba(80,150,255,0.38);border-left:1px solid rgba(80,150,255,0.38)"></div>
+            <div class="hud" style="top:4px;right:4px;border-top:1px solid rgba(80,150,255,0.38);border-right:1px solid rgba(80,150,255,0.38)"></div>
+            <div class="hud" style="bottom:4px;left:4px;border-bottom:1px solid rgba(80,150,255,0.38);border-left:1px solid rgba(80,150,255,0.38)"></div>
+            <div class="hud" style="bottom:4px;right:4px;border-bottom:1px solid rgba(80,150,255,0.38);border-right:1px solid rgba(80,150,255,0.38)"></div>
+          </div>
+        </div>
+
+        <!-- map stats strip -->
+        <div class="map-stats">
+          <div class="mstat"><div class="v" style="color:var(--brand-blue)">16,800</div><div class="l">Internal Plt</div></div>
+          <div class="mstat"><div class="v" style="color:var(--green)">13K – 19K</div><div class="l">External Plt</div></div>
+          <div class="mstat"><div class="v" style="color:var(--amber)">~100,055T</div><div class="l">Tonnage</div></div>
+          <div class="mstat"><div class="v" style="color:var(--purple)">~779</div><div class="l">SKUs</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT — channel split + capacity -->
+    <div class="col col-right">
+      <!-- Channel split -->
+      <div class="card">
+        <div class="panel-head">
+          <span class="panel-title">Sales Channel Split</span>
+          <span class="panel-note">% of volume</span>
+        </div>
+        <div class="channels">
+          <div>
+            <div class="chan-top"><span><span class="k" style="color:var(--green)">GT</span><span class="n">General Trade</span></span><span class="p" style="color:var(--green)">75%</span></div>
+            <div class="bar"><span style="width:75%;background:linear-gradient(90deg,#10b981bb,#10b981);box-shadow:0 0 8px #10b98166"></span></div>
+          </div>
+          <div>
+            <div class="chan-top"><span><span class="k" style="color:var(--brand-blue)">MT</span><span class="n">Modern Trade</span></span><span class="p" style="color:var(--brand-blue)">15%</span></div>
+            <div class="bar"><span style="width:15%;background:linear-gradient(90deg,#4f8dffbb,#4f8dff);box-shadow:0 0 8px #4f8dff66"></span></div>
+          </div>
+          <div>
+            <div class="chan-top"><span><span class="k" style="color:var(--amber)">AFH</span><span class="n">Away From Home</span></span><span class="p" style="color:var(--amber)">10%</span></div>
+            <div class="bar"><span style="width:10%;background:linear-gradient(90deg,#f59e0bbb,#f59e0b);box-shadow:0 0 8px #f59e0b66"></span></div>
+          </div>
+          <div>
+            <div class="chan-top"><span><span class="k" style="color:var(--purple)">Ecom</span><span class="n">E-commerce</span></span><span class="p" style="color:var(--purple)">0.4%</span></div>
+            <div class="bar"><span style="width:1.5%;background:linear-gradient(90deg,#8b5cf6bb,#8b5cf6);box-shadow:0 0 8px #8b5cf666"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Capacity table -->
+      <div class="card cap-card">
+        <div class="panel-head">
+          <span class="panel-title">Warehouse Capacity</span>
+          <span class="panel-note">pallets</span>
+        </div>
+        <div class="cap-scroll">
+          <table class="cap">
+            <thead>
+              <tr><th>Facility</th><th>Location</th><th class="r">Internal</th><th class="r">External</th></tr>
+            </thead>
+            <tbody>
+              <tr><td style="font-weight:600">BKD DC</td><td style="color:var(--txt-dim)">Bình Dương</td><td class="r" style="color:var(--brand-blue-light);font-weight:600">12,500</td><td class="r" style="color:var(--green);font-weight:600">4K – 10K</td></tr>
+              <tr><td style="font-weight:600">NKD DC</td><td style="color:var(--txt-dim)">Hưng Yên</td><td class="r" style="color:var(--brand-blue-light);font-weight:600">4,300</td><td class="r" style="color:var(--green);font-weight:600">9,000</td></tr>
+              <tr><td style="font-weight:600">BKD Copacker</td><td style="color:var(--txt-dim)">Bình Dương</td><td class="r" style="color:var(--brand-blue-light);font-weight:600">500</td><td class="r" style="color:var(--txt-dim)">—</td></tr>
+              <tr><td style="font-weight:600">NKD Copacker</td><td style="color:var(--txt-dim)">Hưng Yên</td><td class="r" style="color:var(--brand-blue-light);font-weight:600">400</td><td class="r" style="color:var(--txt-dim)">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="cap-total">
+          <span class="lbl">Total Pallets</span>
+          <span class="val">
+            <span style="color:var(--brand-blue-light);font-weight:700">16,800</span><span style="color:var(--txt-dim)"> internal + </span><span style="color:var(--green);font-weight:700">13,000 – 19,000</span><span style="color:var(--txt-dim)"> external</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── [3] TACTICAL GRID ──────────────────────────────────────────── -->
+  <div class="tactical">
+    <div class="tcard">
+      <div class="thead"><i class="lucide" data-lucide="factory" style="color:var(--brand-blue)"></i><span class="name" style="color:#4f8dffcc">BKD Plant · Bình Dương</span></div>
+      <div class="kpis">
+        <div class="kpi"><span class="l">Internal</span><span class="v" style="color:var(--brand-blue);text-shadow:0 0 10px #4f8dff77">12,500</span></div>
+        <div class="kpi"><span class="l">Tonnage</span><span class="v" style="color:var(--brand-blue);text-shadow:0 0 10px #4f8dff77">~63.4K T</span></div>
+        <div class="kpi"><span class="l">SKUs</span><span class="v" style="color:var(--brand-blue);text-shadow:0 0 10px #4f8dff77">~503</span></div>
+      </div>
+      <div class="accent" style="background:linear-gradient(90deg,transparent 10%,#4f8dff,transparent 90%)"></div>
+    </div>
+    <div class="tcard">
+      <div class="thead"><i class="lucide" data-lucide="factory" style="color:var(--green)"></i><span class="name" style="color:#10b981cc">NKD Plant · Hưng Yên</span></div>
+      <div class="kpis">
+        <div class="kpi"><span class="l">Internal</span><span class="v" style="color:var(--green);text-shadow:0 0 10px #10b98177">4,300</span></div>
+        <div class="kpi"><span class="l">Tonnage</span><span class="v" style="color:var(--green);text-shadow:0 0 10px #10b98177">~36.7K T</span></div>
+        <div class="kpi"><span class="l">SKUs</span><span class="v" style="color:var(--green);text-shadow:0 0 10px #10b98177">~276</span></div>
+      </div>
+      <div class="accent" style="background:linear-gradient(90deg,transparent 10%,#10b981,transparent 90%)"></div>
+    </div>
+    <div class="tcard">
+      <div class="thead"><i class="lucide" data-lucide="warehouse" style="color:var(--amber)"></i><span class="name" style="color:#f59e0bcc">Copackers</span></div>
+      <div class="kpis">
+        <div class="kpi"><span class="l">BKD</span><span class="v" style="color:var(--amber);text-shadow:0 0 10px #f59e0b77">500</span></div>
+        <div class="kpi"><span class="l">NKD</span><span class="v" style="color:var(--amber);text-shadow:0 0 10px #f59e0b77">400</span></div>
+        <div class="kpi"><span class="l">Area</span><span class="v" style="color:var(--amber);text-shadow:0 0 10px #f59e0b77">2.5K m²</span></div>
+      </div>
+      <div class="accent" style="background:linear-gradient(90deg,transparent 10%,#f59e0b,transparent 90%)"></div>
+    </div>
+    <div class="tcard">
+      <div class="thead"><i class="lucide" data-lucide="pie-chart" style="color:var(--purple)"></i><span class="name" style="color:#8b5cf6cc">Channel Mix</span></div>
+      <div class="kpis">
+        <div class="kpi"><span class="l">GT</span><span class="v" style="color:var(--purple);text-shadow:0 0 10px #8b5cf677">75%</span></div>
+        <div class="kpi"><span class="l">MT</span><span class="v" style="color:var(--purple);text-shadow:0 0 10px #8b5cf677">15%</span></div>
+        <div class="kpi"><span class="l">AFH</span><span class="v" style="color:var(--purple);text-shadow:0 0 10px #8b5cf677">10%</span></div>
+      </div>
+      <div class="accent" style="background:linear-gradient(90deg,transparent 10%,#8b5cf6,transparent 90%)"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- lucide icons (decorative; page works without internet, icons just hide) -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>
+  if (window.lucide) lucide.createIcons();
+
+  /* subtle 3-D tilt on the map, matching the app */
+  (function () {
+    var stage = document.getElementById('mapStage');
+    var tilt  = document.getElementById('mapTilt');
+    if (!stage || !tilt) return;
+    stage.addEventListener('mousemove', function (e) {
+      var r = stage.getBoundingClientRect();
+      var dx = (e.clientX - r.left - r.width / 2) / (r.width / 2);
+      var dy = (e.clientY - r.top - r.height / 2) / (r.height / 2);
+      tilt.style.transition = 'transform .06s linear';
+      tilt.style.transform = 'rotateX(' + (-dy * 7) + 'deg) rotateY(' + (dx * 7) + 'deg)';
+    });
+    stage.addEventListener('mouseleave', function () {
+      tilt.style.transition = 'transform .9s ease';
+      tilt.style.transform = 'rotateX(0deg) rotateY(0deg)';
+    });
+  })();
+</script>
+</body>
+</html>
